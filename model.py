@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from dataclasses import dataclass, field
 
 # Helper for Fixup Initialization
 def fixup_initialize_conv(layer, num_blocks):
@@ -174,25 +175,70 @@ class ValueHead(nn.Module):
         ownership_map = torch.tanh(self.conv_own2(own_out))
         return game_outcome_logits, score_mean, score_stdev, ownership_map
 
+@dataclass(frozen=True)
 class ModelConfig:
-    def __init__(self, version_name="b18c384nbt-uec", in_channels=26, stem_channels=64, num_blocks=18, trunk_channels=384,
-                 block_type="nbt", nbt_bottleneck_factor=4, policy_mid_channels=32, value_mid_channels=32, value_fc_channels=256,
-                 board_size=19, use_fixup=True, use_se_in_trunk=False, use_one_batch_norm=True, use_global_bias=True):
-        self.version_name = version_name
-        self.in_channels = in_channels
-        self.stem_channels = stem_channels
-        self.num_blocks = num_blocks
-        self.trunk_channels = trunk_channels
-        self.block_type = block_type
-        self.nbt_bottleneck_factor = nbt_bottleneck_factor
-        self.policy_mid_channels = policy_mid_channels
-        self.value_mid_channels = value_mid_channels
-        self.value_fc_channels = value_fc_channels
-        self.board_size = board_size
-        self.use_fixup = use_fixup
-        self.use_se_in_trunk = use_se_in_trunk
-        self.use_one_batch_norm = use_one_batch_norm
-        self.use_global_bias = use_global_bias
+    """Configuration parameters for :class:`KataGoModel`."""
+
+    version_name: str = field(
+        default="b18c384nbt-uec",
+        metadata={"doc": "Name of the network version or model checkpoint."},
+    )
+    in_channels: int = field(
+        default=26,
+        metadata={"doc": "Number of input feature planes."},
+    )
+    stem_channels: int = field(
+        default=64,
+        metadata={"doc": "Channels in the initial convolutional stem."},
+    )
+    num_blocks: int = field(
+        default=18,
+        metadata={"doc": "Number of residual blocks in the trunk."},
+    )
+    trunk_channels: int = field(
+        default=384,
+        metadata={"doc": "Channel count within the trunk blocks."},
+    )
+    block_type: str = field(
+        default="nbt",
+        metadata={"doc": "Residual block style: 'standard' or 'nbt'."},
+    )
+    nbt_bottleneck_factor: int = field(
+        default=4,
+        metadata={"doc": "Bottleneck reduction factor for NBT blocks."},
+    )
+    policy_mid_channels: int = field(
+        default=32,
+        metadata={"doc": "Intermediate channel count in the policy head."},
+    )
+    value_mid_channels: int = field(
+        default=32,
+        metadata={"doc": "Intermediate channel count in the value head."},
+    )
+    value_fc_channels: int = field(
+        default=256,
+        metadata={"doc": "Size of the fully connected layer in the value head."},
+    )
+    board_size: int = field(
+        default=19,
+        metadata={"doc": "Board size (assumed square)."},
+    )
+    use_fixup: bool = field(
+        default=True,
+        metadata={"doc": "Enable Fixup initialization for residual blocks."},
+    )
+    use_se_in_trunk: bool = field(
+        default=False,
+        metadata={"doc": "Insert squeeze-and-excitation modules in the trunk."},
+    )
+    use_one_batch_norm: bool = field(
+        default=True,
+        metadata={"doc": "Apply a single batch norm after the trunk."},
+    )
+    use_global_bias: bool = field(
+        default=True,
+        metadata={"doc": "Enable global bias features before the heads."},
+    )
 
 class KataGoModel(nn.Module):
     def __init__(self, config: ModelConfig):
