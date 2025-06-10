@@ -1,3 +1,4 @@
+import os
 """Simple GTP engine wrapper using the Minimal MCTS.
 
 Usage:
@@ -248,3 +249,69 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    # KataGoModel is imported at the top of the main gtp_engine.py file
+    # GtpEngine class is assumed to be defined in this gtp_engine.py file
+
+    # Setup command-line argument parsing
+    parser = argparse.ArgumentParser(
+        description="Run the PyGo GTP engine."
+    )
+    parser.add_argument(
+        "--model-path",
+        required=True,
+        help="Path to the PyTorch model file (.pth)."
+    )
+    parser.add_argument(
+        "--mcts-playouts",
+        type=int,
+        default=16, # A small number for fast moves, increase for strength
+        help="Number of MCTS playouts to perform for each move."
+    )
+    args = parser.parse_args()
+
+    # --- Input Validation ---
+    # os is imported at the top of the main gtp_engine.py file
+    if not os.path.exists(args.model_path):
+        sys.stderr.write(f"Error: Model file not found at '{args.model_path}'\n")
+        sys.exit(1)
+
+    try:
+        # --- Model Loading ---
+        # Note: You may need to adjust the model initialization parameters
+        # to match your specific model's architecture.
+        # This is a guess based on the 'model.py' file.
+        # These parameters are placeholders from the user's example.
+        model_instance = KataGoModel(
+             num_blocks=10,
+             num_channels=64,
+             num_outputs=20 # policy+value
+        )
+        # Load the weights you trained
+        # torch is imported at the top of the main gtp_engine.py file
+        checkpoint = torch.load(args.model_path, map_location=torch.device('cpu'))
+        model_instance.load_state_dict(checkpoint['model_state_dict'])
+        model_instance.eval() # Set model to evaluation mode
+
+        # --- Engine Initialization ---
+        engine = GtpEngine(
+            model=model_instance, # Use the loaded model instance
+            mcts_playouts=args.mcts_playouts
+        )
+
+        # --- Start the Engine ---
+        sys.stderr.write("GTP engine ready and listening.\n")
+        engine.run()
+
+    except Exception as e:
+        sys.stderr.write(f"Fatal error initializing engine: {e}\n")
+        # Write to a log file for debugging, as GUIs might hide stderr
+        with open("gtp_error_log.txt", "w") as f:
+            f.write(f"Exception: {type(e).__name__}\n")
+            f.write(str(e) + "\n")
+            import traceback
+            f.write(traceback.format_exc() + "\n")
+        sys.exit(1)
