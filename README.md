@@ -1,64 +1,42 @@
-# PyGO: KataGo Neural Network in PyTorch
+## Python Source Code Overview
+This is a summary of some of the most notable python files here. Some of the less important or minor scripts are left out, but this covers the most notable ones:
 
-**Scope:**  
-This repo contains a modular PyTorch implementation of the *neural network model* used in KataGo.  
-- **What’s implemented:** Neural network architecture only (`model.py`), including all trunk, residual, and head structures per KataGo’s design.  
-- **What’s *not* implemented:** Monte Carlo Tree Search (MCTS), Go-specific feature extraction, GTP engine, distributed training, or C++ performance optimizations.
+### Main Training Loop
+These are the most critical scripts needed for training neural nets.
 
----
+* `shuffle.py` - Shuffles the data for neural net training and writes it into npz files, `used by selfplay/shuffle.sh`.
+* `katago/train/data_processing_pytorch.py` - Helpers for loading training data and augmenting it, used by training scripts.
+* `katago/train/model_pytorch.py` - Implementation of the neural net and all the subcomponents of the neural net architecture.
+* `katago/train/metrics_pytorch.py` - Implementation of loss functions and other metrics for training.
+* `katago/train/modelconfigs.py` - Specific channel and block configurations for different-sized nets. These are codes that you can supply to `train.py` as an argument to pick the net size.
+* `train.py` - Trains the neural net using the shuffled data and saves it to a SavedModel periodically, used by `selfplay/train.sh`.
+* `export_model.py` - Exports the trained neural net pytorch checkpoints to KataGo's .bin.gz format. Used by `selfplay/export_model_for_selfplay.sh`.
 
-## Purpose
+And:
 
-This repository defines a modular, research-ready neural network architecture for Go, based on KataGo.  
-The long-term objective is to enable:
-- **Self-play training** pipelines and performance benchmarking  
-- **Integration** with GTP-compatible engines and Monte Carlo Tree Search  
-- **Experimental extensions** (e.g., opponent modeling, human-like play, uncertainty estimation, interpretability research)
+* `selfplay/*.sh` - A variety of bash scripts used in [selfplay training](../SelfplayTraining.md) that wrap the above python scripts with logic to loop repeatedly, to pipe output to files, to daemonize and disown so as to keep running when a given shell session ends, and to move stuff around between directories to hook everything up.
 
-Agents should not only refactor and document code, but also:
-1. **Diagnose architectural gaps** and trade-offs  
-2. **Propose experimental modifications** to improve performance or add new capabilities  
-3. **Evaluate output semantics** against design intent and success metrics (e.g., win-rate, score accuracy)  
-4. **Prepare the model** for integration into broader gameplay and training systems
+### Auxiliary scripts
+These are some scripts on the side that might be useful for debugging or experimentation. These are more or less NOT used in training, because normally the C++ selfplay code does all of the work in implementing the board, writing out the input features and data produced from selfplay games, etc. These scripts are a bit more likely than the ones above to suffer from code rot and to be stale, since they aren't used a lot.
 
----
+* `katago/game/board.py`, `katago/game/gamestate.py` - Implementation of Go board, analogous to ../cpp/game/*. NOT used in training.
+* `katago/game/features.py` - Implements input features to the neural net, which are NOT used during training because all of it has been computed by the C++ already for training data. But supports other scripts like `play.py` to perform queries to the neural net for board positions and SGF files from the python code.
+* `katago/game/data.py` - Loads SGF files.
+* `test.py` - Runs a model on some shuffled training data *without* doing gradient updates - instead just reports the stats.
 
-## Environment Setup
+And:
+* `play.py` - A working very primitive GTP engine that just uses the raw neural net to make moves. Also implements a ton of GTP extensions to draw colored heatmaps in GoGUI. This or `test.py` are good places to look if you're interested in how to use the raw pytorch checkpoints for direct inference in python, rather than using the C++ KataGo engine.
 
-Python 3.8+ and PyTorch are required.  
-Recommended for local and agent use:
 
-```bash
-pip install torch
-# (optional) pip install pytest black flake8
-````
+### Distributed backend
+These are some backend scripts for the distributed training. You should never need them, unless somehow you are running your own full website (https://github.com/katago/katago-server) on Docker or Kubernetes.
+* `upload_model.py`
+* `upload_poses.py`
 
----
-
-## Directory Layout
-
-* **`model.py`** – Core model: `InitialBlock`, residual blocks, policy/value heads, config class.
-* **`README.md` / `AGENTS.md`** – Project overview, objectives, and agent guidelines.
-* **`tests/`** (optional) – Unit tests (to be generated or expanded by agents).
-
----
-
-## Quick Example
-
-```python
-from model import KataGoModel, ModelConfig
-import torch
-
-# ModelConfig is a frozen dataclass describing architecture parameters
-config = ModelConfig()
-model = KataGoModel(config)
-batch = torch.randn(2, config.in_channels, config.board_size, config.board_size)
-mask  = torch.ones(2, config.board_size, config.board_size)
-
-outputs = model(batch, board_mask=mask)
-# outputs -> dict(policy_logits, game_outcome_logits, score_mean, score_stdev, ownership_map)
-```
-
----
+### Genboard
+These are a separate set of scripts that have nothing to do with any of the above training scripts, or even with KataGo in general. They use Pytorch to train a neural net that can "fill in" the rest of a board with plausible stone configurations given part of the board. See https://github.com/lightvector/KataGo/pull/347 for a little bit of info on usage, including a pretrained neural net.
+* `genboard_common.py`
+* `genboard_run.py`
+* `genboard_train.py`
 
 
