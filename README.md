@@ -49,6 +49,7 @@ pip install torch
 from model import KataGoModel, ModelConfig
 import torch
 
+# ModelConfig is a frozen dataclass describing architecture parameters
 config = ModelConfig()
 model = KataGoModel(config)
 batch = torch.randn(2, config.in_channels, config.board_size, config.board_size)
