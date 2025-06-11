@@ -40,6 +40,8 @@ pip install torch
 * **`model.py`** – Core model: `InitialBlock`, residual blocks, policy/value heads, config class.
 * **`README.md` / `AGENTS.md`** – Project overview, objectives, and agent guidelines.
 * **`tests/`** (optional) – Unit tests (to be generated or expanded by agents).
+* **`python/`** – KataGo training scripts kept for reference (excluded from lint
+  via `.flake8`).
 
 ---
 
