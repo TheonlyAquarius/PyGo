@@ -62,3 +62,53 @@ outputs = model(batch, board_mask=mask)
 ---
 
 
+## Using with KaTrain
+
+This project reuses KataGo's training pipeline. After generating self-play SGF/npz files you can shuffle, train, and export models compatible with KaTrain or other GTP clients such as Sabaki.
+
+1. **Shuffle training data**
+
+   ```bash
+   python python/shuffle.py data/selfplay \
+       -out-dir data/shuffled/train \
+       -out-tmp-dir /tmp/shuffle \
+       -expand-window-per-row 0.4 \
+       -taper-window-exponent 0.675 \
+       -num-processes 4 \
+       -batch-size 256
+   ```
+   By default the script writes shuffled files under `data/shuffled/train` and `data/shuffled/val`.
+
+2. **Train**
+
+   ```bash
+   python python/train.py \
+       -traindir data/train/run1 \
+       -latestdatadir data/shuffled \
+       -exportdir data/torchmodels_toexport \
+       -exportprefix run1 \
+       -pos-len 19 \
+       -batch-size 256 \
+       -model-kind b6c96
+   ```
+   Checkpoints will accumulate in `data/train/run1`.
+
+3. **Export a checkpoint**
+
+   ```bash
+   python python/export_model_pytorch.py \
+       -checkpoint data/train/run1/checkpoint_latest.pth \
+       -export-dir data/models \
+       -model-name run1 \
+       -filename-prefix run1
+   ```
+   This produces `data/models/run1.bin.gz` that can be used by KataGo engines.
+
+4. **Use in KaTrain or Sabaki**
+
+   Point KaTrain to the exported `.bin.gz` file in the engine settings, or run:
+
+   ```bash
+   python gtp_engine.py
+   ```
+   and connect KaTrain or Sabaki to the resulting GTP engine.
